@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+venv/
+.env/
+.venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# PDF files (중요 - 용량 방지)
+*.pdf
+
+# Build / Packaging
+build/
+dist/
+*.spec
+
+# macOS app
+*.app
+
+# Windows exe
+*.exe
+
+# tmp backup folder
+tmp/
+
+# IDE
+.vscode/
+.idea/
