@@ -52,41 +52,24 @@ def insert_pdfs_after_page(base_pdf, insert_pdfs, after_page):
     if after_page < 1 or after_page > total_pages:
         raise ValueError(f"페이지 번호는 1부터 {total_pages} 사이여야 합니다.")
 
+    # 기준 PDF 앞부분
     for i in range(after_page):
         writer.add_page(base_reader.pages[i])
 
+    # 삽입 PDF들
     for pdf in insert_pdfs:
-        if not os.path.exists(pdf):
-            raise FileNotFoundError(f"삽입할 파일을 찾을 수 없습니다: {pdf}")
-
         insert_reader = PdfReader(pdf)
         for page in insert_reader.pages:
             writer.add_page(page)
 
+    # 기준 PDF 뒷부분
     for i in range(after_page, total_pages):
         writer.add_page(base_reader.pages[i])
 
-    base_dir = os.path.dirname(base_pdf)
-
-    with tempfile.NamedTemporaryFile(
-        delete=False,
-        suffix=".pdf",
-        dir=base_dir
-    ) as tmp:
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
         temp_path = tmp.name
 
-    try:
-        with open(temp_path, "wb") as f:
-            writer.write(f)
+    with open(temp_path, "wb") as f:
+        writer.write(f)
 
-        writer.close()
-
-        os.replace(temp_path, base_pdf)
-
-    except Exception:
-        if os.path.exists(temp_path):
-            try:
-                os.remove(temp_path)
-            except Exception:
-                pass
-        raise
+    os.replace(temp_path, base_pdf)

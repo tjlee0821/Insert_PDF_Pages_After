@@ -10,6 +10,8 @@ from pdf_utils import (
     insert_pdfs_after_page,
 )
 
+from image_utils import files_to_pdf_list, cleanup_temp_files
+
 
 class App:
     def __init__(self, root):
@@ -24,7 +26,7 @@ class App:
 
         self.label = tk.Label(
             root,
-            text="PDF를 드래그하세요\n\n첫 번째 PDF = 기준 PDF\n그 이후 PDF = 선택한 페이지 뒤에 삽입",
+            text="PDF 또는 이미지를 드래그하세요\n\n첫 번째 PDF = 기준 PDF\n그 이후 파일 = 선택한 페이지 뒤에 삽입",
             font=("Arial", 14),
             justify="center"
         )
@@ -87,10 +89,10 @@ class App:
     def on_scale_change(self, value):
         page = int(float(value))
         self.selected_page = page
+
         self.page_entry.config(state="normal")
         self.page_entry.delete(0, tk.END)
         self.page_entry.insert(0, str(page))
-        self.page_entry.config(state="normal")
 
     def on_entry_change(self, event=None):
         if not self.base_pdf:
@@ -148,7 +150,7 @@ class App:
 
         page = simpledialog.askinteger(
             "삽입 위치 선택",
-            f"집어넣을 PDF를 몇 페이지 뒤에 넣을까요?\n\n1 ~ {self.total_pages} 사이 숫자 입력",
+            f"집어넣을 파일을 몇 페이지 뒤에 넣을까요?\n\n1 ~ {self.total_pages} 사이 숫자 입력",
             minvalue=1,
             maxvalue=self.total_pages
         )
@@ -164,27 +166,40 @@ class App:
         return page
 
     def on_drop(self, event):
-        files = self.root.tk.splitlist(event.data)
-        pdfs = [f for f in files if f.lower().endswith(".pdf")]
+        files = list(self.root.tk.splitlist(event.data))
 
-        if not pdfs:
-            messagebox.showwarning("경고", "PDF만 드롭하세요.")
+        if not files:
             return
 
-        if not self.base_pdf:
-            self.set_base_pdf(pdfs[0])
+        temp_files = []
 
-            if len(pdfs) == 1:
+        if not self.base_pdf:
+            first_file = files[0]
+
+            if not first_file.lower().endswith(".pdf"):
+                messagebox.showwarning("경고", "첫 번째 기준 파일은 PDF여야 합니다.")
                 return
 
-            insert_pdfs = pdfs[1:]
+            self.set_base_pdf(first_file)
+
+            if len(files) == 1:
+                return
+
+            insert_files = files[1:]
+            insert_pdfs, temp_files = files_to_pdf_list(insert_files)
+
         else:
-            insert_pdfs = pdfs
+            insert_pdfs, temp_files = files_to_pdf_list(files)
+
+        if not insert_pdfs:
+            messagebox.showwarning("경고", "PDF 또는 이미지 파일만 드롭하세요.")
+            return
 
         page = self.ask_page_if_needed()
 
         if page is None:
             self.help_text.config(text="삽입이 취소되었습니다. 페이지를 먼저 선택하세요.")
+            cleanup_temp_files(temp_files)
             return
 
         try:
@@ -198,8 +213,11 @@ class App:
 
             messagebox.showinfo(
                 "완료",
-                f"{len(insert_pdfs)}개 PDF를 {page}페이지 뒤에 삽입했습니다."
+                f"{len(insert_pdfs)}개 파일을 {page}페이지 뒤에 삽입했습니다."
             )
 
         except Exception as e:
             messagebox.showerror("오류", str(e))
+
+        finally:
+            cleanup_temp_files(temp_files)
